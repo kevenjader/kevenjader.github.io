@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteio de Natal - Especial</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: radial-gradient(circle at center, #8b0000 0%, #4a0000 100%);
+            overflow: hidden;
+            color: white;
+            height: 100vh;
+        }
+
+        .festive-font { font-family: 'Mountains of Christmas', cursive; }
+
+        /* Neve */
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: #fff;
+            user-select: none;
+            z-index: 1;
+            pointer-events: none;
+            animation: fall linear infinite;
+        }
+        @keyframes fall { to { transform: translateY(105vh); } }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .gold-text {
+            color: #FFD700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+
+        .winner-glow {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { box-shadow: 0 0 20px #FFD700, 0 0 40px #FF4500; }
+            to { box-shadow: 0 0 40px #FFD700, 0 0 80px #FF4500; }
+        }
+
+        #confetti-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 100;
+        }
+
+        .gallery-image {
+            transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+            filter: drop-shadow(0 0 30px rgba(0,0,0,0.7));
+        }
+
+        .header-transition {
+            transition: transform 0.4s ease-in-out, opacity 0.3s ease-in;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        
+        .game-fade-out {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+            transition: all 0.5s ease-in-out;
+        }
+
+        /* Bingo */
+        .bingo-ball {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        .bingo-ball.active {
+            background: #FFD700;
+            color: #4a0000;
+            font-weight: bold;
+            box-shadow: 0 0 10px #FFD700;
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+        .current-ball-anim {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Karaoke Neon */
+        .karaoke-neon {
+            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #ff00de;
+            animation: neon-blink 1.5s infinite alternate;
+        }
+        @keyframes neon-blink {
+            from { opacity: 1; filter: brightness(1); }
+            to { opacity: 0.8; filter: brightness(1.3); transform: scale(1.02); }
+        }
+        .music-note {
+            position: absolute;
+            font-size: 2.5rem;
+            color: #FFD700;
+            pointer-events: none;
+            z-index: 80;
+            animation: note-float linear forwards;
+        }
+        @keyframes note-float {
+            0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+            100% { transform: translate(var(--tw-x), -500px) rotate(360deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Áudios -->
+    <audio id="bg-music" loop>
+        <source src="Relaxing XMas.m4a" type="audio/mp4">
+    </audio>
+    <audio id="applause-sound">
+        <source src="aplausos.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Header -->
+    <header id="main-header" class="p-4 flex justify-between items-center z-50 bg-black/30 header-transition">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-gift text-3xl text-red-500 bg-white rounded-full p-2"></i>
+            <h1 class="text-3xl text-white font-bold tracking-wider festive-font">Natal da Família Araújo</h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-karaoke" title="Karaokê" class="p-3 rounded-full hover:bg-white/20 transition text-white">
+                <i class="fas fa-microphone-alt text-xl"></i>
+            </button>
+            <button id="btn-bingo" title="Jogar Bingo" class="p-3 rounded-full hover:bg-white/20 transition text-white">
+                <i class="fas fa-th text-xl"></i>
+            </button>
+            <button id="btn-gallery" title="Ver Integrantes" class="p-3 rounded-full hover:bg-white/20 transition text-white">
+                <i class="fas fa-images text-xl"></i>
+            </button>
+            <button id="toggle-sound" class="p-3 rounded-full hover:bg-white/20 transition">
+                <i class="fas fa-volume-up text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <main id="game-container" class="flex-1 relative z-10 p-4 flex items-center justify-center transition-all duration-500">
+        
+        <!-- TELA 1: CADASTRO -->
+        <div id="scene-setup" class="w-full max-w-4xl glass-panel rounded-3xl p-8 flex flex-col md:flex-row gap-8 transition-all duration-500">
+            <div class="flex-1">
+                <h2 class="text-5xl mb-4 festive-font">Participantes</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Nome:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-name" placeholder="Ex: Maria" 
+                                   class="flex-1 p-4 rounded-xl bg-white text-gray-800 text-lg outline-none focus:ring-4 focus:ring-green-500"
+                                   onkeypress="if(event.key==='Enter') addParticipant()">
+                            <button onclick="addParticipant()" class="bg-green-600 hover:bg-green-500 text-white px-6 rounded-xl font-bold transition transform active:scale-95">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-black/40 rounded-2xl border border-white/10">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-gray-300 italic">Valor por pessoa:</span>
+                            <div class="flex items-center gap-2 bg-white/10 p-2 px-4 rounded-full border border-white/20">
+                                <span class="text-yellow-500 font-bold">R$</span>
+                                <input type="number" id="input-value" value="5" min="0" 
+                                       class="w-16 bg-transparent text-white font-bold text-xl outline-none text-center"
+                                       oninput="updatePotValue(this.value)">
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-end border-t border-white/10 pt-4">
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-widest">Prêmio Acumulado</p>
+                                <p class="text-4xl font-bold gold-text" id="total-money-display">R$ 0,00</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold" id="count-display">0</p>
+                                <p class="text-xs text-gray-400">Pessoas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="startGame()" id="btn-start" disabled class="mt-8 w-full bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-bold py-5 rounded-2xl text-2xl shadow-2xl transform hover:scale-[1.02] transition disabled:opacity-30 disabled:cursor-not-allowed">
+                    COMEÇAR FESTA 🎄
+                </button>
+            </div>
+            <div class="flex-1 bg-black/30 rounded-2xl p-4 flex flex-col h-80 md:h-[450px]">
+                <h3 class="text-lg mb-3 font-bold flex items-center gap-2"><i class="fas fa-users"></i> No Jogo:</h3>
+                <ul id="list-participants" class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scroll">
+                    <li class="text-center text-gray-500 mt-20 italic" id="empty-msg">Adicione os nomes para começar...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- TELA 2: SORTEIO -->
+        <div id="scene-game" class="hidden w-full max-w-5xl flex flex-col md:flex-row gap-6 h-[80vh] transition-all duration-500">
+            <div class="flex-[2] glass-panel rounded-3xl p-8 flex flex-col items-center justify-between relative">
+                <div class="text-center">
+                    <div class="inline-block bg-yellow-500/20 px-6 py-2 rounded-full border border-yellow-500/50 mb-4">
+                        <span class="text-yellow-400 font-bold text-xl"><i class="fas fa-coins mr-2"></i>POTE: <span id="game-pot">R$ 0</span></span>
+                    </div>
+                    <h2 class="text-2xl text-gray-300">Quem será o próximo a sair?</h2>
+                </div>
+                <div class="w-full max-w-xl h-56 bg-black/50 rounded-3xl border-4 border-yellow-600 flex items-center justify-center relative shadow-2xl">
+                    <div id="roulette-display" class="text-5xl md:text-7xl font-bold text-white festive-font text-center px-6 uppercase tracking-tighter">
+                        PRONTO?
+                    </div>
+                </div>
+                <div class="flex flex-col items-center gap-4 w-full">
+                    <p id="instruction-text" class="text-xl text-white/80 h-8">Clique no botão para girar</p>
+                    <button id="btn-spin" onclick="spinRoulette()" class="w-full max-w-md py-6 bg-green-600 hover:bg-green-500 border-b-8 border-green-800 rounded-2xl text-3xl font-bold shadow-2xl active:translate-y-2 active:border-b-0 transition-all">
+                        SORTEAR 🎲
+                    </button>
+                    <p class="text-gray-400">Restam <span id="remaining-count" class="text-white font-bold">0</span> participantes</p>
+                </div>
+            </div>
+            <div class="flex-1 glass-panel rounded-3xl p-6 bg-red-900/40 flex flex-col">
+                <h3 class="font-bold mb-4 flex items-center gap-2 text-yellow-500">
+                    <i class="fas fa-history"></i> JÁ SAÍRAM (CHOCOLATE)
+                </h3>
+                <ul id="list-eliminated" class="flex-1 overflow-y-auto space-y-2 text-sm custom-scroll"></ul>
+            </div>
+        </div>
+
+        <!-- TELA 3: VENCEDOR (AJUSTADA PARA ~85%) -->
+        <div id="scene-winner" class="hidden text-center z-50 transform scale-[0.65] opacity-0 transition-all duration-1000">
+            <div class="winner-glow bg-gradient-to-br from-yellow-400 via-red-600 to-yellow-600 p-2 rounded-[30px]">
+                <div class="bg-black/95 backdrop-blur-2xl p-8 md:p-14 rounded-[28px] border border-white/20 relative">
+                    <h2 class="text-3xl md:text-5xl text-yellow-400 mb-4 festive-font">✨ TEMOS UM VENCEDOR! ✨</h2>
+                    <div class="animate-bounce my-8">
+                        <h1 id="winner-name" class="text-6xl md:text-8xl font-bold text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">---</h1>
+                    </div>
+                    <div class="bg-white/10 p-6 rounded-2xl border-2 border-yellow-500 inline-block">
+                        <p class="text-gray-400 uppercase tracking-[0.2em] text-xs mb-1">Prêmio Final</p>
+                        <p id="winner-amount" class="text-5xl font-bold gold-text">R$ 0,00</p>
+                        <p class="mt-3 text-green-400 font-bold text-sm">+ A ÚLTIMA BARRA DE CHOCOLATE! 🍫</p>
+                    </div>
+                    <div class="mt-8">
+                        <button onclick="location.reload()" class="px-8 py-3 bg-white text-red-700 rounded-full font-bold text-lg hover:bg-yellow-100 transition shadow-xl">
+                            REINICIAR <i class="fas fa-redo ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA 4: GALERIA -->
+        <div id="scene-gallery" class="hidden fixed inset-0 z-[60] flex flex-col items-center justify-center transition-all duration-500">
+            <button id="close-gallery" class="absolute top-8 right-8 text-white/50 hover:text-white text-5xl z-[70] transition-colors">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            <div class="relative w-full h-full flex flex-col items-center justify-center p-8">
+                <div class="relative max-w-5xl w-full h-[75vh] flex items-center justify-center">
+                    <img id="gallery-img" src="" class="max-w-full max-h-full object-contain rounded-3xl gallery-image opacity-0 scale-95">
+                </div>
+                <div class="mt-8 bg-black/40 backdrop-blur-md px-12 py-4 rounded-full border border-white/20">
+                    <span class="text-3xl font-bold gold-text festive-font tracking-[0.2em] uppercase">Nossos Integrantes</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA 5: BINGO -->
+        <div id="scene-bingo" class="hidden fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 bg-black/60 backdrop-blur-xl transition-all duration-500">
+            <button id="close-bingo" class="absolute top-8 right-8 text-white/50 hover:text-white text-5xl z-[70]">
+                <i class="fas fa-times-circle"></i>
+            </button>
+
+            <div class="w-full max-w-6xl flex flex-col md:flex-row gap-8 items-stretch h-[90vh]">
+                <div class="flex-1 glass-panel rounded-[40px] p-8 flex flex-col items-center justify-between">
+                    <h2 class="text-4xl festive-font gold-text">Bingo de Natal 🎄</h2>
+                    
+                    <div class="relative w-64 h-64 flex items-center justify-center">
+                        <div class="absolute inset-0 border-4 border-yellow-500/30 rounded-full animate-pulse"></div>
+                        <div id="bingo-current-ball" class="w-48 h-48 bg-white rounded-full flex items-center justify-center text-8xl font-black text-red-700 shadow-[0_0_50px_rgba(255,255,255,0.4)] border-8 border-red-600">
+                            --
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-gray-400 uppercase tracking-widest mb-4">Últimas Sorteadas</p>
+                        <div id="bingo-history" class="flex gap-2 justify-center h-12"></div>
+                    </div>
+
+                    <div class="w-full space-y-4">
+                        <button onclick="drawBingoBall()" id="btn-draw-bingo" class="w-full py-6 bg-red-600 hover:bg-red-500 border-b-8 border-red-800 rounded-2xl text-3xl font-bold transition-all active:translate-y-1 active:border-b-0">
+                            SORTEAR PEDRA 🔮
+                        </button>
+                        <button onclick="resetBingo()" class="w-full py-2 text-gray-400 hover:text-white transition text-sm">
+                            LIMPAR BINGO
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-[1.5] glass-panel rounded-[40px] p-6 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold uppercase tracking-tighter">Painel de Conferência</h3>
+                        <span class="bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full border border-yellow-500/30 font-bold" id="bingo-drawn-count">0/75</span>
+                    </div>
+                    
+                    <div id="bingo-grid" class="grid grid-cols-10 gap-2 overflow-y-auto pr-2 custom-scroll flex-1"></div>
+
+                    <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-5 gap-4 text-center text-xs font-bold text-gray-400">
+                        <div class="p-2 rounded bg-blue-900/30">B (1-15)</div>
+                        <div class="p-2 rounded bg-red-900/30">I (16-30)</div>
+                        <div class="p-2 rounded bg-yellow-900/30">N (31-45)</div>
+                        <div class="p-2 rounded bg-green-900/30">G (46-60)</div>
+                        <div class="p-2 rounded bg-purple-900/30">O (61-75)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA 6: KARAOKÊ -->
+        <div id="scene-karaoke" class="hidden fixed inset-0 z-[60] flex flex-col items-center justify-center p-6 bg-black/90 backdrop-blur-2xl transition-all duration-500">
+            <button id="close-karaoke" class="absolute top-8 right-8 text-white/50 hover:text-white text-5xl z-[70]">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            <div class="text-center relative z-10 w-full flex flex-col items-center">
+                <h2 class="text-6xl md:text-8xl festive-font karaoke-neon mb-6">Karaokê da Família Araújo</h2>
+                <div class="relative inline-block group">
+                    <div class="absolute -inset-4 bg-pink-500 rounded-[40px] blur-2xl opacity-30 animate-pulse"></div>
+                    <img src="karaoke.jpeg" onerror="this.src='https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&q=80&w=800'" 
+                         class="max-w-xs md:max-w-sm max-h-[70vh] w-auto rounded-[40px] border-4 border-white/20 shadow-2xl relative z-10 transition-transform duration-500 group-hover:scale-105 object-contain">
+                </div>
+                <div class="mt-8 space-y-2">
+                    <p class="text-xl md:text-2xl text-yellow-400 font-bold tracking-[0.3em] animate-bounce">PEGUE O MICROFONE! 🎤</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const state = {
+            participants: [],
+            eliminated: [],
+            remaining: [],
+            moneyPerPerson: 5,
+            isSpinning: false,
+            soundEnabled: true,
+            isMusicPlaying: false,
+            galleryIndex: 1,
+            galleryTimeout: null,
+            lastScene: 'scene-setup',
+            bingoDrawn: [],
+            bingoAvailable: Array.from({length: 75}, (_, i) => i + 1),
+            isDrawingBingo: false,
+            karaokeInterval: null
+        };
+
+        const bgMusic = document.getElementById('bg-music');
+        const applauseSound = document.getElementById('applause-sound');
+        const header = document.getElementById('main-header');
+        
+        bgMusic.volume = 0.2; 
+        applauseSound.volume = 0.6;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSfx(freq, type, duration, vol=0.1) {
+            if (!state.soundEnabled) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.value = freq;
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sfx = {
+            tick: () => playSfx(800, 'sine', 0.05, 0.05),
+            pop: () => playSfx(400, 'triangle', 0.1, 0.1),
+            bingo: () => playSfx(1200, 'sine', 0.2, 0.08),
+            win: () => {
+                [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playSfx(f, 'square', 0.4, 0.1), i * 200));
+                if (state.soundEnabled) {
+                    applauseSound.currentTime = 0;
+                    applauseSound.play().catch(e => console.log(e));
+                }
+            }
+        };
+
+        function startMusic() {
+            if (!state.isMusicPlaying && state.soundEnabled) {
+                bgMusic.play().then(() => { state.isMusicPlaying = true; }).catch(e => {});
+            }
+        }
+
+        function toggleAllSound() {
+            state.soundEnabled = !state.soundEnabled;
+            const btn = document.getElementById('toggle-sound');
+            if (state.soundEnabled) {
+                btn.innerHTML = '<i class="fas fa-volume-up text-xl"></i>';
+                bgMusic.play();
+                state.isMusicPlaying = true;
+            } else {
+                btn.innerHTML = '<i class="fas fa-volume-mute text-xl text-red-400"></i>';
+                bgMusic.pause();
+                applauseSound.pause();
+                state.isMusicPlaying = false;
+            }
+        }
+
+        function openKaraoke() {
+            startMusic();
+            header.style.transform = 'translateY(-100%)';
+            header.style.opacity = '0';
+            const scenes = ['scene-setup', 'scene-game', 'scene-winner'];
+            scenes.forEach(s => {
+                const el = document.getElementById(s);
+                if (!el.classList.contains('hidden')) {
+                    state.lastScene = s;
+                    el.classList.add('game-fade-out');
+                }
+            });
+            document.getElementById('scene-karaoke').classList.remove('hidden');
+            state.karaokeInterval = setInterval(() => {
+                const note = document.createElement('i');
+                note.className = 'fas fa-music music-note';
+                note.style.left = (Math.random() * 80 + 10) + 'vw';
+                note.style.bottom = '10vh';
+                note.style.setProperty('--tw-x', (Math.random() * 400 - 200) + 'px');
+                note.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                document.body.appendChild(note);
+                setTimeout(() => note.remove(), 6000);
+            }, 600);
+        }
+
+        function closeKaraoke() {
+            header.style.transform = 'translateY(0)';
+            header.style.opacity = '1';
+            const lastEl = document.getElementById(state.lastScene);
+            if (lastEl) lastEl.classList.remove('game-fade-out');
+            document.getElementById('scene-karaoke').classList.add('hidden');
+            clearInterval(state.karaokeInterval);
+        }
+
+        function openGallery() {
+            startMusic();
+            state.galleryIndex = 1;
+            header.style.transform = 'translateY(-100%)';
+            header.style.opacity = '0';
+            const scenes = ['scene-setup', 'scene-game', 'scene-winner'];
+            scenes.forEach(s => {
+                const el = document.getElementById(s);
+                if (!el.classList.contains('hidden')) {
+                    state.lastScene = s;
+                    el.classList.add('game-fade-out');
+                }
+            });
+            document.getElementById('scene-gallery').classList.remove('hidden');
+            updateGalleryImage();
+            startGalleryCycle();
+        }
+
+        function startGalleryCycle() {
+            if (state.galleryTimeout) clearTimeout(state.galleryTimeout);
+            const delay = state.galleryIndex === 1 ? 8000 : 2500;
+            state.galleryTimeout = setTimeout(() => {
+                state.galleryIndex++;
+                if (state.galleryIndex > 40) state.galleryIndex = 1;
+                updateGalleryImage();
+                startGalleryCycle();
+            }, delay);
+        }
+
+        function closeGallery() {
+            header.style.transform = 'translateY(0)';
+            header.style.opacity = '1';
+            const lastEl = document.getElementById(state.lastScene);
+            if (lastEl) lastEl.classList.remove('game-fade-out');
+            document.getElementById('scene-gallery').classList.add('hidden');
+            if (state.galleryTimeout) clearTimeout(state.galleryTimeout);
+        }
+
+        function updateGalleryImage() {
+            const img = document.getElementById('gallery-img');
+            img.style.opacity = '0';
+            img.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                img.src = `${state.galleryIndex}.jpeg`;
+                img.onerror = () => { img.src = 'https://via.placeholder.com/800x600?text=Foto+' + state.galleryIndex; };
+                img.onload = () => {
+                    img.style.opacity = '1';
+                    img.style.transform = 'scale(1)';
+                };
+            }, 400);
+        }
+
+        function openBingo() {
+            startMusic();
+            header.style.transform = 'translateY(-100%)';
+            header.style.opacity = '0';
+            const scenes = ['scene-setup', 'scene-game', 'scene-winner'];
+            scenes.forEach(s => {
+                const el = document.getElementById(s);
+                if (!el.classList.contains('hidden')) {
+                    state.lastScene = s;
+                    el.classList.add('game-fade-out');
+                }
+            });
+            document.getElementById('scene-bingo').classList.remove('hidden');
+            renderBingoGrid();
+        }
+
+        function closeBingo() {
+            header.style.transform = 'translateY(0)';
+            header.style.opacity = '1';
+            const lastEl = document.getElementById(state.lastScene);
+            if (lastEl) lastEl.classList.remove('game-fade-out');
+            document.getElementById('scene-bingo').classList.add('hidden');
+        }
+
+        function renderBingoGrid() {
+            const grid = document.getElementById('bingo-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 75; i++) {
+                const ball = document.createElement('div');
+                ball.id = `bingo-ball-${i}`;
+                ball.className = `bingo-ball ${state.bingoDrawn.includes(i) ? 'active' : ''}`;
+                ball.innerText = i;
+                grid.appendChild(ball);
+            }
+            document.getElementById('bingo-drawn-count').innerText = `${state.bingoDrawn.length}/75`;
+        }
+
+        function drawBingoBall() {
+            if (state.isDrawingBingo || state.bingoAvailable.length === 0) return;
+            state.isDrawingBingo = true;
+            const btn = document.getElementById('btn-draw-bingo');
+            const display = document.getElementById('bingo-current-ball');
+            btn.disabled = true;
+            let counter = 0;
+            const interval = setInterval(() => {
+                display.innerText = Math.floor(Math.random() * 75) + 1;
+                sfx.tick();
+                counter++;
+                if (counter > 20) {
+                    clearInterval(interval);
+                    const randomIdx = Math.floor(Math.random() * state.bingoAvailable.length);
+                    const drawn = state.bingoAvailable.splice(randomIdx, 1)[0];
+                    state.bingoDrawn.push(drawn);
+                    display.innerText = drawn;
+                    display.classList.add('current-ball-anim');
+                    sfx.bingo();
+                    const ballInGrid = document.getElementById(`bingo-ball-${drawn}`);
+                    if (ballInGrid) ballInGrid.classList.add('active');
+                    updateBingoHistory();
+                    document.getElementById('bingo-drawn-count').innerText = `${state.bingoDrawn.length}/75`;
+                    setTimeout(() => {
+                        display.classList.remove('current-ball-anim');
+                        state.isDrawingBingo = false;
+                        btn.disabled = false;
+                    }, 500);
+                }
+            }, 60);
+        }
+
+        function updateBingoHistory() {
+            const history = document.getElementById('bingo-history');
+            history.innerHTML = '';
+            const recent = state.bingoDrawn.slice(-6, -1).reverse();
+            recent.forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xs text-white';
+                div.innerText = n;
+                history.appendChild(div);
+            });
+        }
+
+        function resetBingo() {
+            if (!confirm("Deseja realmente reiniciar o Bingo?")) return;
+            state.bingoDrawn = [];
+            state.bingoAvailable = Array.from({length: 75}, (_, i) => i + 1);
+            document.getElementById('bingo-current-ball').innerText = '--';
+            document.getElementById('bingo-history').innerHTML = '';
+            renderBingoGrid();
+        }
+
+        function updatePotValue(val) {
+            state.moneyPerPerson = parseFloat(val) || 0;
+            renderSetup();
+        }
+
+        function addParticipant() {
+            startMusic(); 
+            const input = document.getElementById('input-name');
+            const name = input.value.trim();
+            if (!name) return;
+            state.participants.push({ id: Date.now(), name: name });
+            input.value = '';
+            input.focus();
+            sfx.pop();
+            renderSetup();
+        }
+
+        function removeParticipant(id) {
+            state.participants = state.participants.filter(p => p.id !== id);
+            renderSetup();
+        }
+
+        function renderSetup() {
+            const list = document.getElementById('list-participants');
+            const startBtn = document.getElementById('btn-start');
+            list.innerHTML = '';
+            if (state.participants.length === 0) {
+                list.innerHTML = '<li class="text-center text-gray-500 mt-20 italic">Adicione os nomes para começar...</li>';
+                startBtn.disabled = true;
+            } else {
+                startBtn.disabled = state.participants.length < 2;
+                state.participants.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-white/5 p-4 rounded-xl flex justify-between items-center border border-white/5';
+                    li.innerHTML = `<span class="font-bold">${p.name}</span><button onclick="removeParticipant(${p.id})" class="text-red-500 hover:text-red-400 p-2"><i class="fas fa-times"></i></button>`;
+                    list.appendChild(li);
+                });
+            }
+            document.getElementById('count-display').innerText = state.participants.length;
+            const total = state.participants.length * state.moneyPerPerson;
+            document.getElementById('total-money-display').innerText = total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+        }
+
+        function startGame() {
+            startMusic();
+            state.remaining = [...state.participants];
+            document.getElementById('scene-setup').classList.add('hidden');
+            document.getElementById('scene-game').classList.remove('hidden');
+            document.getElementById('scene-game').classList.add('flex');
+            document.getElementById('game-pot').innerText = (state.participants.length * state.moneyPerPerson).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            state.lastScene = 'scene-game';
+            updateGameUI();
+        }
+
+        function updateGameUI() {
+            document.getElementById('remaining-count').innerText = state.remaining.length;
+            const listEl = document.getElementById('list-eliminated');
+            listEl.innerHTML = '';
+            state.eliminated.slice().reverse().forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'text-gray-400 py-2 border-b border-white/5 flex justify-between items-center';
+                li.innerHTML = `<span>${p.name}</span> <span class="text-[10px] bg-red-500/20 text-red-300 px-2 py-1 rounded">SAIU 🍫</span>`;
+                listEl.appendChild(li);
+            });
+        }
+
+        function spinRoulette() {
+            if (state.isSpinning || state.remaining.length <= 1) return;
+            state.isSpinning = true;
+            const btn = document.getElementById('btn-spin');
+            const display = document.getElementById('roulette-display');
+            const instr = document.getElementById('instruction-text');
+            btn.disabled = true;
+            instr.innerText = "Sorteando...";
+            display.classList.remove('text-red-500');
+            let startTime = Date.now();
+            const interval = setInterval(() => {
+                const rand = Math.floor(Math.random() * state.remaining.length);
+                display.innerText = state.remaining[rand].name;
+                sfx.tick();
+                if (Date.now() - startTime > 3000) {
+                    clearInterval(interval);
+                    const finalIdx = Math.floor(Math.random() * state.remaining.length);
+                    const luckyOne = state.remaining.splice(finalIdx, 1)[0];
+                    state.eliminated.push(luckyOne);
+                    display.innerText = luckyOne.name;
+                    display.classList.add('text-red-500');
+                    instr.innerHTML = `👉 <span class="text-white font-bold">${luckyOne.name}</span>, pegue seu chocolate!`;
+                    sfx.pop();
+                    updateGameUI();
+                    setTimeout(() => {
+                        state.isSpinning = false;
+                        btn.disabled = false;
+                        if (state.remaining.length === 1) {
+                            btn.innerText = "VER O VENCEDOR! 🏆";
+                            btn.onclick = showWinner;
+                            btn.classList.replace('bg-green-600', 'bg-yellow-600');
+                        }
+                    }, 2000);
+                }
+            }, 100);
+        }
+
+        function showWinner() {
+            const winner = state.remaining[0];
+            const prize = state.participants.length * state.moneyPerPerson;
+            document.getElementById('scene-game').classList.add('hidden');
+            const winScene = document.getElementById('scene-winner');
+            winScene.classList.remove('hidden');
+            state.lastScene = 'scene-winner';
+            document.getElementById('winner-name').innerText = winner.name;
+            document.getElementById('winner-amount').innerText = prize.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            setTimeout(() => {
+                winScene.classList.remove('scale-[0.65]', 'opacity-0');
+                winScene.classList.add('scale-[0.85]', 'opacity-100'); // Escala final reduzida (~85%)
+                startConfetti();
+                sfx.win();
+            }, 100);
+        }
+
+        function initSnow() {
+            for (let i = 0; i < 50; i++) {
+                const snow = document.createElement('div');
+                snow.className = 'snowflake';
+                snow.innerHTML = '❄';
+                snow.style.left = Math.random() * 100 + 'vw';
+                snow.style.opacity = Math.random();
+                snow.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                snow.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                snow.style.animationDelay = Math.random() * 5 + 's';
+                document.body.appendChild(snow);
+            }
+        }
+
+        function startConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const pieces = [];
+            for(let i=0; i<200; i++) {
+                pieces.push({
+                    x: Math.random()*canvas.width,
+                    y: Math.random()*canvas.height-canvas.height,
+                    color: ['#FFD700','#FF4500','#32CD32','#00BFFF','#FFFFFF'][Math.floor(Math.random()*5)],
+                    s: Math.random()*10+5,
+                    v: Math.random()*5+2
+                });
+            }
+            function draw() {
+                ctx.clearRect(0,0, canvas.width, canvas.height);
+                pieces.forEach(p => {
+                    ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.s, p.s); p.y += p.v;
+                    if(p.y > canvas.height) p.y = -20;
+                });
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        window.onload = () => {
+            initSnow();
+            document.getElementById('toggle-sound').onclick = toggleAllSound;
+            document.getElementById('btn-gallery').onclick = openGallery;
+            document.getElementById('close-gallery').onclick = closeGallery;
+            document.getElementById('btn-bingo').onclick = openBingo;
+            document.getElementById('close-bingo').onclick = closeBingo;
+            document.getElementById('btn-karaoke').onclick = openKaraoke;
+            document.getElementById('close-karaoke').onclick = closeKaraoke;
+        };
+    </script>
+</body>
+</html>
